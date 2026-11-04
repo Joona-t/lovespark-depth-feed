@@ -5,25 +5,66 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Depth Feed</title>
+<script>
+// Holo Mochi is the default. "system" (Match my device) means no data-theme, so prefers-color-scheme decides.
+let t = "kr-holo"; try { t = localStorage.getItem("depthfeed.theme") || t; } catch {}
+if (t !== "system") document.documentElement.dataset.theme = t;
+</script>
 <style>
 :root {
   --bg: #f7f5f1; --panel: #ffffff; --ink: #1d1b18; --muted: #6d675e; --line: #e4dfd6;
-  --accent: #b4532a; --accent-ink: #fff; --chip: #efeae2;
+  --accent: #a04621; --accent-ink: #fff; --chip: #efeae2; --page-bg: none;
+  color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #151412; --panel: #1f1d1a; --ink: #ece7df; --muted: #9c958a; --line: #34302b; --accent: #e08a5f; --accent-ink: #151412; --chip: #2a2723; }
+  :root:not([data-theme]) { --bg: #151412; --panel: #1f1d1a; --ink: #ece7df; --muted: #9c958a; --line: #34302b; --accent: #e08a5f; --accent-ink: #151412; --chip: #2a2723; color-scheme: dark; }
 }
+:root[data-theme="dark"] { --bg: #151412; --panel: #1f1d1a; --ink: #ece7df; --muted: #9c958a; --line: #34302b; --accent: #e08a5f; --accent-ink: #151412; --chip: #2a2723; color-scheme: dark; }
+/* The four Korean themes, same tokens as Raw Thought reader and the Retro Cursor popup.
+   scripts/verify-themes.mjs checks every text colour against every surface it can sit on. */
+:root[data-theme="kr-seoul"] {
+  --bg: #ffe8f2; --panel: #fdf9ff; --ink: #3a2a3a; --muted: #6b4a66; --line: #c4a8e0;
+  --accent: #a8134f; --accent-ink: #ffffff; --chip: #e9dcff;
+  --page-bg: linear-gradient(160deg, #dff1ff 0%, #ffe8f2 45%, #fff4d6 78%, #e9dcff 100%);
+}
+:root[data-theme="kr-gingham"] {
+  --bg: #fff3f7; --panel: #fffafc; --ink: #2a1824; --muted: #6e3a57; --line: #f0c3d5;
+  --accent: #b0124f; --accent-ink: #ffffff; --chip: #ffe3ee;
+  --page-bg: linear-gradient(#fff3f7, #fff3f7);
+}
+:root[data-theme="kr-holo"] {
+  --bg: #efe4ff; --panel: #faf7ff; --ink: #2b1b4a; --muted: #54447a; --line: #e3d6f7;
+  --accent: #6d35d8; --accent-ink: #ffffff; --chip: #e9d5ff;
+  --page-bg: radial-gradient(60% 45% at 12% 8%, #ffd1ea 0%, transparent 70%), radial-gradient(55% 40% at 92% 18%, #cfe6ff 0%, transparent 70%), radial-gradient(60% 50% at 80% 88%, #c8f7e1 0%, transparent 72%), radial-gradient(55% 45% at 10% 80%, #ffd8c2 0%, transparent 70%), linear-gradient(#efe4ff, #efe4ff);
+}
+:root[data-theme="kr-neon"] {
+  --bg: #120b18; --panel: #1e1030; --ink: #f3eaf2; --muted: #c9b3dc; --line: #4a2a5e;
+  --accent: #ff46d6; --accent-ink: #120b18; --chip: #2a1740;
+  --page-bg: radial-gradient(80% 50% at 50% -10%, #3e1a40 0%, transparent 70%), radial-gradient(70% 45% at 100% 110%, #3a0f50 0%, transparent 70%), linear-gradient(#120b18, #120b18);
+  color-scheme: dark;
+}
+:root[data-theme^="kr-"] body { background-image: var(--page-bg); background-attachment: fixed; }
+/* each theme's signature: Seoul's lilac offset shadow, Gingham's inked sticker card and top band, Holo's glass, Neon's glow */
+:root[data-theme="kr-seoul"] .card { box-shadow: 3px 3px 0 #c4a8e0; }
+:root[data-theme="kr-gingham"] .card { border: 2px solid #2a1824; box-shadow: 3px 3px 0 #2a1824; }
+:root[data-theme="kr-gingham"] body::before { content: ""; position: fixed; inset: 0 0 auto 0; height: 10px; z-index: 20; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(246, 166, 196, .6) 0 5px, transparent 5px 10px), repeating-linear-gradient(90deg, rgba(246, 166, 196, .6) 0 5px, transparent 5px 10px), #fff3f7; }
+:root[data-theme="kr-holo"] .card { border-radius: 22px; border-color: rgba(255, 255, 255, .85); background: rgba(255, 255, 255, .62); box-shadow: 0 10px 28px rgba(140, 100, 230, .18); }
+:root[data-theme="kr-neon"] .card { border-color: rgba(255, 70, 214, .45); box-shadow: 0 0 0 1px rgba(255, 70, 214, .35), 0 0 18px rgba(255, 70, 214, .25); }
+:root[data-theme^="kr-"] #player { background: var(--bg) var(--page-bg) fixed; }
+#theme { font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 4px 10px; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
 header { max-width: 1100px; margin: 0 auto; padding: 28px 16px 8px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: baseline; }
 h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
 h1 small { font-weight: 400; color: var(--muted); font-size: 14px; margin-left: 8px; }
-nav { display: flex; gap: 4px; margin-left: auto; }
+nav { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
 nav button, .chip, .btn { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
 nav button[aria-pressed="true"], .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 main { max-width: 1100px; margin: 0 auto; padding: 8px 16px 48px; }
 .bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 20px; align-items: center; }
 .chip { background: var(--chip); border-color: transparent; font-size: 14px; }
+.chip[aria-pressed="true"] .meta { color: inherit; }
 .note { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
 input[type=search] { font: inherit; width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); margin-bottom: 16px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
@@ -46,17 +87,23 @@ input[type=search] { font: inherit; width: 100%; padding: 10px 14px; border-radi
 #player h2 { font-size: 18px; margin: 0; }
 #player .quote { -webkit-line-clamp: unset; margin-top: 16px; }
 a { color: var(--accent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .empty { color: var(--muted); padding: 40px 0; text-align: center; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Depth Feed <small>AI, LLMs, math and robotics that Hacker News keeps recommending</small></h1>
+  <h1>Depth Feed <small>AI, math and the sciences that Hacker News keeps recommending</small></h1>
   <nav id="tabs">
     <button data-tab="picks" aria-pressed="true">Today</button>
     <button data-tab="search">Search</button>
     <button data-tab="saved">Saved</button>
     <button data-tab="watched">Watched</button>
+    <label><span class="sr-only">Theme</span><select id="theme" aria-label="Theme">
+      <option value="system">Match my device</option><option value="light">Light</option><option value="dark">Dark</option>
+      <option value="kr-seoul">Seoul Y2K 서울</option><option value="kr-gingham">Gingham Sticker 깅엄</option>
+      <option value="kr-holo">Holo Mochi 모찌</option><option value="kr-neon">Neon Usagi 네온</option>
+    </select></label>
   </nav>
 </header>
 <main>
@@ -75,7 +122,7 @@ a { color: var(--accent); }
     </div>
     <div class="frame"><iframe id="p-frame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
     <div id="p-info"></div>
-    <p class="meta">Ads, if any, come from YouTube's player and this page can't remove them. uBlock Origin in your browser blocks them.</p>
+    <p class="meta">Ads, if any, come from YouTube's player and this page can't remove them. LoveSpark's free Pink Ad Blocker extension blocks them.</p>
   </div>
 </div>
 
@@ -83,6 +130,9 @@ a { color: var(--accent); }
 const VIDEOS = /*__DATA__*/[];
 const PICKS_PER_DAY = 6;
 const byId = new Map(VIDEOS.map((v) => [v.id, v]));
+const FOLLOWING = "Following";
+const TOPIC_ORDER = [FOLLOWING, "LLMs", "AI", "Math", "Physics", "Chemistry", "Biology", "Robotics"];
+const inTopic = (v, t) => !t || (t === FOLLOWING ? !!v.follow : v.tags.includes(t));
 
 // Per-viewer state, browser-only. Everything still works if storage is blocked.
 const KEY = "depthfeed.v1";
@@ -109,7 +159,7 @@ function nudge(v, d) {
 
 function picks() {
   const excluded = new Set([...state.watched, ...state.hidden, ...state.saved]);
-  const pool = VIDEOS.filter((v) => !excluded.has(v.id) && (!state.topic || v.tags.includes(state.topic)));
+  const pool = VIDEOS.filter((v) => !excluded.has(v.id) && inTopic(v, state.topic));
   const rand = rng(`${today}:${state.reshuffles}:${state.topic}`);
   // Weighted sampling without replacement (Efraimidis-Spirakis): key = u^(1/w).
   return pool
@@ -121,7 +171,7 @@ function picks() {
 
 const esc = (s = "") => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const span = (v) => (v.yrs[0] === v.yrs[1] ? `${v.yrs[0]}` : `${v.yrs[0]}–${v.yrs[1]}`);
-const why = (v) => [v.rec ? `${v.rec} HN ${v.rec === 1 ? "person" : "people"} linked it` : "", v.pts ? `${v.pts} points` : "", span(v)].filter(Boolean).join(" · ");
+const why = (v) => v.follow && !v.rec ? `You follow this channel${v.pub ? ` · ${v.pub}` : ""}` : [v.rec ? `${v.rec} HN ${v.rec === 1 ? "person" : "people"} linked it` : "", v.pts ? `${v.pts} points` : "", span(v)].filter(Boolean).join(" · ");
 
 function card(v) {
   const isSaved = state.saved.includes(v.id);
@@ -147,14 +197,14 @@ let query = "";
 function render() {
   document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.tab === tab));
   const counts = {};
-  VIDEOS.forEach((v) => v.tags.forEach((t) => (counts[t] = (counts[t] || 0) + 1)));
+  VIDEOS.forEach((v) => [...v.tags, ...(v.follow ? [FOLLOWING] : [])].forEach((t) => (counts[t] = (counts[t] || 0) + 1)));
   document.getElementById("topics").innerHTML =
-    `<button class="chip" data-topic="" aria-pressed="${!state.topic}">All four</button>` +
-    ["LLMs", "AI", "Math", "Robotics"].filter((t) => counts[t])
+    `<button class="chip" data-topic="" aria-pressed="${!state.topic}">All</button>` +
+    TOPIC_ORDER.filter((t) => counts[t])
       .map((t) => `<button class="chip" data-topic="${t}" aria-pressed="${state.topic === t}">${t} <span class="meta">${counts[t]}</span></button>`).join("");
 
   const view = document.getElementById("view");
-  const topicOk = (v) => !state.topic || v.tags.includes(state.topic);
+  const topicOk = (v) => inTopic(v, state.topic);
   if (tab === "picks") {
     view.innerHTML = `<p class="note">${PICKS_PER_DAY} picks for ${today}. They stay the same all day, so there is nothing to refresh.</p>` +
       grid(picks(), "Nothing left in this topic. Try another.") +
@@ -202,6 +252,14 @@ function closePlayer(markWatched) {
   document.body.style.overflow = "";
   render();
 }
+
+const themeSel = document.getElementById("theme");
+themeSel.value = document.documentElement.dataset.theme || "system";
+themeSel.onchange = () => {
+  const t = themeSel.value;
+  if (t === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  try { localStorage.setItem("depthfeed.theme", t); } catch {}
+};
 
 document.getElementById("p-done").onclick = () => closePlayer(true);
 document.getElementById("p-close").onclick = () => closePlayer(false);

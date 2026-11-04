@@ -75,6 +75,9 @@ const TOPICS = {
   LLMs: /\b(llms?|large language models?|language models?|gpt[- ]?[1-5o]?|chatgpt|transformers?|attention is all|tokeni[sz]|rlhf|fine[- ]?tun|in[- ]context learning|nanogpt|llama|claude|scaling laws?)\b/i,
   AI: /\b(ai|a\.i\.|artificial intelligence|machine learning|deep learning|neural (net|network)s?|backprop\w*|gradient descent|reinforcement learning|diffusion models?|computer vision|convolutional|alpha(go|zero|fold)|deepmind|karpathy|hinton|lecun|bengio|sutskever|pytorch|tensorflow|jax|micrograd|autoencoders?|gans?|bayesian|statistical learning|kaggle)\b/i,
   Math: /\b(math(s|ematics|ematical|ematician)?|theorems?|calculus|algebra|geometry|topology|number theory|prime numbers?|riemann|fourier|probability|combinatorics|category theory|differential equations?|eigen\w*|linear algebra|integrals?|infinity|g[öo]del|manifolds?|group theory|graph theory|lambda calculus|3blue1brown|numberphile|mathologer|terence tao|grothendieck|euler)\b/i,
+  Physics: /\b(physics|physicists?|quantum (mechanics|field|physics|computing|computers?|entanglement)|relativity|general relativity|black holes?|thermodynamics|entropy|electromagnet\w*|particle physics|higgs|standard model|string theory|cosmology|dark (matter|energy)|neutrinos?|feynman|maxwell'?s equations|schr[öo]dinger|lagrangian|hamiltonian|special relativity|lhc|cern|fusion (reactor|energy|power)|tokamak|superconduct\w*|astrophysics|gravitational waves?|optics)\b/i,
+  Chemistry: /\b(chemistry|chemists?|chemical reactions?|periodic table|molecules?|molecular|organic chemistry|biochemistry|catalys[ti]s?|polymers?|electrochemi\w*|crystallograph\w*|synthesi[sz]ing|elements? \d+|isotopes?|oxidation|electrolysis|batter(y|ies) chemistry|nilered|periodic videos)\b/i,
+  Biology: /\b(biology|biologists?|cells? biology|cellular|dna|rna|genes?|genetics?|genomes?|genomics|crispr|proteins?|protein folding|evolution(ary)? (biology|theory)|natural selection|neurons?|neuroscience|brain (science|research|cells?|structure|scan\w*|imaging)|microb(e|es|iology|iome)|bacteria|viruses?|immune system|immunology|enzymes?|mitochondria|ecology|embryo\w*|stem cells?|biochemistry|synthetic biology|alphafold)\b/i,
   Robotics: /\b(robots?|robotics?|boston dynamics|humanoids?|quadrupeds?|robot(ic)? (arms?|hands?)|self[- ]driving|autonomous (cars?|vehicles?|driving)|slam|kinematics|control theory|actuators?|legged)\b/i,
 };
 // Channels known for teaching these topics; their videos count even when the title says little.
@@ -83,7 +86,20 @@ const TRUSTED = {
   "Welch Labs": ["AI", "Math"], "StatQuest with Josh Starmer": ["AI"], "Yannic Kilcher": ["AI", "LLMs"],
   "Steve Brunton": ["Math"], "Institute for Advanced Study": ["Math"], "Boston Dynamics": ["Robotics"],
   "Jeremy Howard": ["AI"], "Umar Jamil": ["LLMs"], "Google DeepMind": ["AI"], "Stanford Online": ["AI"],
+  "PBS Space Time": ["Physics"], "minutephysics": ["Physics"], "Sixty Symbols": ["Physics"], "Fermilab": ["Physics"],
+  "Veritasium": ["Physics"], "Physics Girl": ["Physics"], "Looking Glass Universe": ["Physics"], "Science Asylum": ["Physics"],
+  "Periodic Videos": ["Chemistry"], "NileRed": ["Chemistry"], "Explosions&Fire": ["Chemistry"], "Applied Science": ["Physics"],
+  "Tom's Lab": ["Chemistry"], "Journey to the Microcosmos": ["Biology"], "iBiology": ["Biology"], "HHMI BioInteractive": ["Biology"],
+  "Artem Kirsanov": ["Biology"], "Crash Course": [], "Kurzgesagt – In a Nutshell": [], "Ninja Nerd": ["Biology"],
+  "Julia Turc": ["AI", "LLMs"],
 };
+// Channels Joona follows by name. Not ranked by HN: their latest uploads come from YouTube's public RSS feed
+// (no key), they skip the drama filter (his explicit pick) and show under the Following chip.
+const FOLLOW = [
+  { id: "UCCpNQKYvrnWQNjZprabMJlw", name: "Moonshots with Peter Diamandis", tags: ["AI"] },
+  { id: "UCMUy_WsUIYbM_hKR9drb9dA", name: "Julia Turc", tags: ["AI", "LLMs"] },
+  { id: "UCbRP3c757lWg9M-U7TyEkXA", name: "Theo - t3.gg", tags: ["AI"] },
+];
 // No news, drama or hype: mainstream/news channels and attention-bait titles are dropped outright.
 const NEWS_CHANNEL = /\b(cnn|fox (news|business)|msnbc|cnbc|bbc news|sky news|abc news|nbc news|cbs (news|mornings)|60 minutes|al jazeera|bloomberg|reuters|associated press|guardian news|new york times|wall street journal|wsj|washington post|vice( news)?|vox|business insider|insider|cnet|the verge|tmz|young turks|daily show|last week tonight|jimmy kimmel|late show|tonight show|good morning america|pbs newshour|dw news|france 24|euronews|wion|forbes|fortune|yahoo finance|channel 4 news|lbc|piers morgan|the economist|tldr news|cold fusion|coldfusion|hbo|ign|prime video|not just bikes|y combinator|more perfect union|adult swim|dyson|steve lehto|excerpts4u)\b/i;
 // "LastWeekTonight" -> "Last Week Tonight", so camel-cased channel names match too.
@@ -124,6 +140,34 @@ const out = ranked
     };
   });
 
+// Following: latest uploads per channel from the RSS feed, Shorts dropped (a /shorts/ URL answers 200 only for Shorts).
+const isShort = async (id) => {
+  try { return (await fetch(`https://www.youtube.com/shorts/${id}`, { method: "HEAD", redirect: "manual" })).status === 200; } catch { return false; }
+};
+const median = out.length ? out[Math.floor(out.length / 2)].s : 10;
+const have = new Set(out.map((x) => x.id));
+for (const f of FOLLOW) {
+  let xml = "";
+  try {
+    const res = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${f.id}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    xml = await res.text();
+  } catch (e) { console.log(`follow ${f.name}: feed failed (${e.message}), skipped`); continue; }
+  let n = 0;
+  for (const [, entry] of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
+    const id = entry.match(/<yt:videoId>([\w-]{11})</)?.[1];
+    const title = decode(entry.match(/<title>([^<]*)</)?.[1] || "");
+    const y = +(entry.match(/<published>(\d{4})/)?.[1] || new Date().getUTCFullYear());
+    const pub = entry.match(/<published>([\d-]{10})/)?.[1];
+    if (!id || await isShort(id)) continue;
+    if (have.has(id)) { out.find((x) => x.id === id).follow = true; continue; }
+    const tags = [...new Set([...topics(title, ""), ...f.tags])];
+    out.push({ id, title, ch: f.name, yrs: [y, y], pub, tags, follow: true, learn: LEARNING.test(title) || undefined, s: median });
+    have.add(id); n++;
+  }
+  console.log(`follow ${f.name}: ${n} videos`);
+}
+
 const html = readFileSync("site/template.html", "utf8").replace("/*__DATA__*/[]", JSON.stringify(out).replace(/</g, "\\u003c"));
 writeFileSync("site/index.html", html);
-console.log(`wrote site/index.html with ${out.length} videos (of ${ranked.length} candidates; the rest dead, off-topic or noise)`);
+console.log(`wrote site/index.html with ${out.length} videos (${out.filter((x) => x.follow).length} from followed channels; ${ranked.length} HN candidates, the rest dead, off-topic or noise)`);

@@ -12,3 +12,11 @@
 - Dropped news/mainstream channels and drama/hype/politics titles. Learning-shaped videos get a 1.6× rank boost and a badge.
 - Fixes found by auditing random samples: "matrix", "prime", "proof", "statistics" and "drone" matched films, ads, car videos and war footage, so those terms were tightened or removed. Camel-cased channel names such as `LastWeekTonight` slipped past the news blocklist, so names are now also matched after splitting on case. Some oEmbed results have no channel name and crashed the build, so they now default to an empty name.
 - Ads: the embedded player's ads can't be removed from the page; the README points to uBlock Origin.
+
+## 0.3.0 (2026-11-04): science topics, followed channels, Korean themes
+- Added Physics, Chemistry and Biology topics with trusted teaching channels: 2,949 videos (752 Physics, 147 Biology, 72 Chemistry).
+- Following chip: latest uploads from Moonshots, Julia Turc and Theo via YouTube RSS (no key), Shorts dropped. These skip the drama filter because Joona picked them.
+- Themes: the four Korean themes from Raw Thought reader, Holo Mochi as the default; "Match my device" is now a saved choice so the default doesn't override it. New `scripts/verify-themes.mjs` contrast gate: 6 themes, 114 pairs, all ≥4.5:1.
+- Fixes found by sampling: bare "brain" matched self-help talks (now brain science/research/imaging only); Applied Science (engineering) flooded Chemistry, so it's Physics only; the first lookup grabbed the wrong channel ID for Theo (feed stopped in 2024), now UCbRP3c757lWg9M-U7TyEkXA; the light theme's accent on chips was 4.16:1, darkened to pass; the selected chip's count was invisible.
+- Ads: a 3-video check of the embedded player saw no ads with or without a blocker; the README now points to LoveSpark's Pink Ad Blocker instead of uBlock Origin.
+
