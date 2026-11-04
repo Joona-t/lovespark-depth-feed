@@ -17,4 +17,4 @@ The feed works straight away because `site/index.html` already has the videos bu
 - **Better topic tagging:** run a local model over titles instead of keyword regexes, which would catch the few loosely related videos (for example game-AI clips) that still get through.
 - **Fresh videos:** re-run the crawl monthly so new HN-recommended videos show up.
 - **Your own tuning:** the topic, trusted-channel, news and noise lists are at the top of `scripts/build.mjs`.
-- **Tweets tab (proposed):** crawl HN for x.com/twitter.com links and rank them the same way, so important tweets reach you without opening X.
+- **Tweets:** will be its own tool, not part of Depth Feed (Joona, 2026-11-04).
