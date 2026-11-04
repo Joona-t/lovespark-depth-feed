@@ -35,3 +35,8 @@
 - CS50 channel added to Following. New Computer Science topic (172) and History topic (61) with Fall of Civilizations, Historia Civilis, toldinstone and Extra History by RSS.
 - History videos are about wars and empires, so for History-only videos the war/military words no longer count as noise. Sampling showed bare "civilizations" matched space videos, so it was dropped.
 - 910 videos total.
+
+## 0.7.0 (2026-11-04): Stanford courses, Stanford Online and MIT OCW followed
+- Nine official Stanford Online playlists (163 lectures): CS336 Language Modeling from Scratch 2026, CS229 ML 2026, CME295 Transformers & LLMs 2025 and 2026, CS221 AI 2025, CS230 Deep Learning 2025, CS231N 2025, CS224R Deep RL, CS25 Transformers United. Newer playlists have short IDs (e.g. `PLaqpC4kq8Gpw`); checked with yt-dlp that they are real and official.
+- Stanford Online and MIT OpenCourseWare added to Following with `onTopic: true`: they post on every subject, so only uploads whose title matches a topic are kept. MIT OCW's current 15 are a grad-school skills series, so 0 for now.
+- 1,083 videos total.

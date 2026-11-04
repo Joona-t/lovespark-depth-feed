@@ -103,6 +103,15 @@ const TRUSTED = {
 // Full university courses (official playlists), listed with yt-dlp at build time. They're hand-picked, so they skip
 // MIN_YEAR: a 2005 linear algebra course is still current.
 const COURSES = [
+  { id: "PLoROMvodv4rMqXOcazWaTUHhq-yembLCV", name: "Stanford Online", course: "Stanford CS336 Language Modeling from Scratch (2026)", tags: ["LLMs", "AI"] },
+  { id: "PLaqpC4kq8Gpw", name: "Stanford Online", course: "Stanford CS229 Machine Learning (2026)", tags: ["AI", "Math"] },
+  { id: "PLakGfbKCei80", name: "Stanford Online", course: "Stanford CME295 Transformers and LLMs (2026)", tags: ["LLMs", "AI"] },
+  { id: "PLoROMvodv4rOCXd21gf0CF4xr35yINeOy", name: "Stanford Online", course: "Stanford CME295 Transformers and LLMs (2025)", tags: ["LLMs", "AI"] },
+  { id: "PLoROMvodv4rMeDqwS1yFl3j3sR_-MQNEN", name: "Stanford Online", course: "Stanford CS221 Artificial Intelligence (2025)", tags: ["AI", "Computer Science"] },
+  { id: "PLoROMvodv4rNRRGdS0rBbXOUGA0wjdh1X", name: "Stanford Online", course: "Stanford CS230 Deep Learning (2025)", tags: ["AI"] },
+  { id: "PLoROMvodv4rOmsNzYBMe0gJY2XS8AQg16", name: "Stanford Online", course: "Stanford CS231N Deep Learning for Computer Vision (2025)", tags: ["AI"] },
+  { id: "PLoROMvodv4rPwxE0ONYRa_itZFdaKCylL", name: "Stanford Online", course: "Stanford CS224R Deep Reinforcement Learning", tags: ["AI", "Robotics"] },
+  { id: "PLoROMvodv4rNiJRchCzutFw5ItR_Z27CM", name: "Stanford Online", course: "Stanford CS25 Transformers United", tags: ["LLMs", "AI"] },
   { id: "PLhQjrBD2T381WAHyx1pq-sBfykqMBI7V4", name: "CS50", course: "Harvard CS50x", tags: ["Computer Science"] },
   { id: "PLhQjrBD2T381PopUTYtMSstgk-hsTGkVm", name: "CS50", course: "Harvard CS50 AI", tags: ["AI", "Computer Science"] },
   { id: "PLtBw6njQRU-rwp5__7C0oIVt26ZgjG9NI", name: "Alexander Amini", course: "MIT 6.S191 Deep Learning", tags: ["AI"] },
@@ -121,6 +130,9 @@ const FOLLOW = [
   { id: "UCMUy_WsUIYbM_hKR9drb9dA", name: "Julia Turc", tags: ["AI", "LLMs"] },
   { id: "UCbRP3c757lWg9M-U7TyEkXA", name: "Theo - t3.gg", tags: ["AI"] },
   { id: "UCcabW7890RKJzL968QWEykA", name: "CS50", tags: ["Computer Science"] },
+  // Big university channels post on every subject: keep only uploads whose title matches a topic.
+  { id: "UCBa5G_ESCn8Yd4vw5U-gIcg", name: "Stanford Online", tags: [], onTopic: true },
+  { id: "UCEBb1b_L6zDS3xTUrIALZOw", name: "MIT OpenCourseWare", tags: [], onTopic: true },
   // History: latest uploads, under the History chip only (label shown on the card).
   { id: "UCT6Y5JJPKe_JDMivpKgVXew", name: "Fall of Civilizations", tags: ["History"], lang: true, label: "History channel" },
   { id: "UCv_vLHiWVBh_FR9vbeuiY-A", name: "Historia Civilis", tags: ["History"], lang: true, label: "History channel" },
@@ -198,6 +210,7 @@ for (const f of FOLLOW) {
     if (!id || entry.includes("/shorts/")) continue;
     if (have.has(id)) { if (!f.lang) out.find((x) => x.id === id).follow = true; continue; }
     const tags = f.lang ? f.tags : [...new Set([...topics(title, ""), ...f.tags])];
+    if (f.onTopic && !tags.length) continue;
     out.push({ id, title, ch: f.name, yrs: [y, y], pub, tags, follow: f.lang ? undefined : true, lang: f.lang || undefined, lab: f.label,
       learn: f.lang || LEARNING.test(title) || undefined, s: median });
     have.add(id); n++;
