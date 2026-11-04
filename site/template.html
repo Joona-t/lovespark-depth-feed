@@ -130,7 +130,7 @@ const VIDEOS = /*__DATA__*/[];
 const PICKS_PER_DAY = 6;
 const byId = new Map(VIDEOS.map((v) => [v.id, v]));
 const FOLLOWING = "Following";
-const TOPIC_ORDER = [FOLLOWING, "LLMs", "AI", "Math", "Physics", "Chemistry", "Biology", "Robotics", "Japanese", "Mandarin", "Korean"];
+const TOPIC_ORDER = [FOLLOWING, "LLMs", "AI", "Math", "Physics", "Chemistry", "Biology", "Computer Science", "Robotics", "History", "Japanese", "Mandarin", "Korean"];
 const inTopic = (v, t) => !t || (t === FOLLOWING ? !!v.follow : v.tags.includes(t));
 
 // Per-viewer state, browser-only. Everything still works if storage is blocked.
@@ -170,7 +170,7 @@ function picks() {
 
 const esc = (s = "") => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const span = (v) => (v.yrs[0] === v.yrs[1] ? `${v.yrs[0]}` : `${v.yrs[0]}–${v.yrs[1]}`);
-const why = (v) => (v.follow || v.lang) && !v.rec ? `${v.lang ? "Language channel" : "You follow this channel"}${v.pub ? ` · ${v.pub}` : ""}` : [v.rec ? `${v.rec} HN ${v.rec === 1 ? "person" : "people"} linked it` : "", v.pts ? `${v.pts} points` : "", span(v)].filter(Boolean).join(" · ");
+const why = (v) => v.course && !v.rec ? `${v.course} · lecture ${v.part}` : (v.follow || v.lang) && !v.rec ? `${v.lang ? v.lab || "Language channel" : "You follow this channel"}${v.pub ? ` · ${v.pub}` : ""}` : [v.rec ? `${v.rec} HN ${v.rec === 1 ? "person" : "people"} linked it` : "", v.pts ? `${v.pts} points` : "", span(v)].filter(Boolean).join(" · ");
 
 function card(v) {
   const isSaved = state.saved.includes(v.id);
