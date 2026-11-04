@@ -99,6 +99,15 @@ const FOLLOW = [
   { id: "UCCpNQKYvrnWQNjZprabMJlw", name: "Moonshots with Peter Diamandis", tags: ["AI"] },
   { id: "UCMUy_WsUIYbM_hKR9drb9dA", name: "Julia Turc", tags: ["AI", "LLMs"] },
   { id: "UCbRP3c757lWg9M-U7TyEkXA", name: "Theo - t3.gg", tags: ["AI"] },
+  // Language learning: latest uploads, tagged by language only (not under Following).
+  { id: "UCBSyd8tXJoEJKIXfrwkPdbA", name: "Japanese Ammo with Misa", tags: ["Japanese"], lang: true },
+  { id: "UCH88l3_ltyJm67gAFzDFNRw", name: "Nihongo con Teppei", tags: ["Japanese"], lang: true },
+  { id: "UC2fAiRQHRQT9aj9P_ijYeow", name: "Mandarin Corner", tags: ["Mandarin"], lang: true },
+  { id: "UCC_fdR7zZ_5SU--xuOrEdKw", name: "Grace Mandarin Chinese", tags: ["Mandarin"], lang: true },
+  { id: "UCc5ueW8aqO73Q6MevB8L5PA", name: "Mandarin Blueprint", tags: ["Mandarin"], lang: true },
+  { id: "UC5r3WHrX4Z7peSYpDlgktGw", name: "Talk To Me In Korean", tags: ["Korean"], lang: true },
+  { id: "UCcA88_Z7wQWMoQ9bKwjuanA", name: "Korean Unnie", tags: ["Korean"], lang: true },
+  { id: "UC7ynjArlSFuXW23ssZAknyA", name: "Go! Billy Korean", tags: ["Korean"], lang: true },
 ];
 // No news, drama or hype: mainstream/news channels and attention-bait titles are dropped outright.
 const NEWS_CHANNEL = /\b(cnn|fox (news|business)|msnbc|cnbc|bbc news|sky news|abc news|nbc news|cbs (news|mornings)|60 minutes|al jazeera|bloomberg|reuters|associated press|guardian news|new york times|wall street journal|wsj|washington post|vice( news)?|vox|business insider|insider|cnet|the verge|tmz|young turks|daily show|last week tonight|jimmy kimmel|late show|tonight show|good morning america|pbs newshour|dw news|france 24|euronews|wion|forbes|fortune|yahoo finance|channel 4 news|lbc|piers morgan|the economist|tldr news|cold fusion|coldfusion|hbo|ign|prime video|not just bikes|y combinator|more perfect union|adult swim|dyson|steve lehto|excerpts4u)\b/i;
@@ -140,10 +149,7 @@ const out = ranked
     };
   });
 
-// Following: latest uploads per channel from the RSS feed, Shorts dropped (a /shorts/ URL answers 200 only for Shorts).
-const isShort = async (id) => {
-  try { return (await fetch(`https://www.youtube.com/shorts/${id}`, { method: "HEAD", redirect: "manual" })).status === 200; } catch { return false; }
-};
+// Following and languages: latest uploads per channel from the RSS feed. Shorts are dropped (the feed links them as /shorts/).
 const median = out.length ? out[Math.floor(out.length / 2)].s : 10;
 const have = new Set(out.map((x) => x.id));
 for (const f of FOLLOW) {
@@ -159,10 +165,11 @@ for (const f of FOLLOW) {
     const title = decode(entry.match(/<title>([^<]*)</)?.[1] || "");
     const y = +(entry.match(/<published>(\d{4})/)?.[1] || new Date().getUTCFullYear());
     const pub = entry.match(/<published>([\d-]{10})/)?.[1];
-    if (!id || await isShort(id)) continue;
-    if (have.has(id)) { out.find((x) => x.id === id).follow = true; continue; }
-    const tags = [...new Set([...topics(title, ""), ...f.tags])];
-    out.push({ id, title, ch: f.name, yrs: [y, y], pub, tags, follow: true, learn: LEARNING.test(title) || undefined, s: median });
+    if (!id || entry.includes("/shorts/")) continue;
+    if (have.has(id)) { if (!f.lang) out.find((x) => x.id === id).follow = true; continue; }
+    const tags = f.lang ? f.tags : [...new Set([...topics(title, ""), ...f.tags])];
+    out.push({ id, title, ch: f.name, yrs: [y, y], pub, tags, follow: f.lang ? undefined : true, lang: f.lang || undefined,
+      learn: f.lang || LEARNING.test(title) || undefined, s: median });
     have.add(id); n++;
   }
   console.log(`follow ${f.name}: ${n} videos`);

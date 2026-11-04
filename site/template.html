@@ -93,7 +93,7 @@ a { color: var(--accent); }
 </head>
 <body>
 <header>
-  <h1>Depth Feed <small>AI, math and the sciences that Hacker News keeps recommending</small></h1>
+  <h1>Depth Feed <small>AI, math, science and languages, without the noise</small></h1>
   <nav id="tabs">
     <button data-tab="picks" aria-pressed="true">Today</button>
     <button data-tab="search">Search</button>
@@ -122,7 +122,6 @@ a { color: var(--accent); }
     </div>
     <div class="frame"><iframe id="p-frame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
     <div id="p-info"></div>
-    <p class="meta">Ads, if any, come from YouTube's player and this page can't remove them. LoveSpark's free Pink Ad Blocker extension blocks them.</p>
   </div>
 </div>
 
@@ -131,7 +130,7 @@ const VIDEOS = /*__DATA__*/[];
 const PICKS_PER_DAY = 6;
 const byId = new Map(VIDEOS.map((v) => [v.id, v]));
 const FOLLOWING = "Following";
-const TOPIC_ORDER = [FOLLOWING, "LLMs", "AI", "Math", "Physics", "Chemistry", "Biology", "Robotics"];
+const TOPIC_ORDER = [FOLLOWING, "LLMs", "AI", "Math", "Physics", "Chemistry", "Biology", "Robotics", "Japanese", "Mandarin", "Korean"];
 const inTopic = (v, t) => !t || (t === FOLLOWING ? !!v.follow : v.tags.includes(t));
 
 // Per-viewer state, browser-only. Everything still works if storage is blocked.
@@ -171,7 +170,7 @@ function picks() {
 
 const esc = (s = "") => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const span = (v) => (v.yrs[0] === v.yrs[1] ? `${v.yrs[0]}` : `${v.yrs[0]}–${v.yrs[1]}`);
-const why = (v) => v.follow && !v.rec ? `You follow this channel${v.pub ? ` · ${v.pub}` : ""}` : [v.rec ? `${v.rec} HN ${v.rec === 1 ? "person" : "people"} linked it` : "", v.pts ? `${v.pts} points` : "", span(v)].filter(Boolean).join(" · ");
+const why = (v) => (v.follow || v.lang) && !v.rec ? `${v.lang ? "Language channel" : "You follow this channel"}${v.pub ? ` · ${v.pub}` : ""}` : [v.rec ? `${v.rec} HN ${v.rec === 1 ? "person" : "people"} linked it` : "", v.pts ? `${v.pts} points` : "", span(v)].filter(Boolean).join(" · ");
 
 function card(v) {
   const isSaved = state.saved.includes(v.id);

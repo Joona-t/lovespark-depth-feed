@@ -20,3 +20,8 @@
 - Fixes found by sampling: bare "brain" matched self-help talks (now brain science/research/imaging only); Applied Science (engineering) flooded Chemistry, so it's Physics only; the first lookup grabbed the wrong channel ID for Theo (feed stopped in 2024), now UCbRP3c757lWg9M-U7TyEkXA; the light theme's accent on chips was 4.16:1, darkened to pass; the selected chip's count was invisible.
 - Ads: a 3-video check of the embedded player saw no ads with or without a blocker; the README now points to LoveSpark's Pink Ad Blocker instead of uBlock Origin.
 
+
+## 0.4.0 (2026-11-04): language channels, no ad notes
+- Japanese, Mandarin and Korean chips from 8 learning channels via RSS (27 / 26 / 21 videos). Channel IDs come from each page's canonical link and were checked against the feed's channel name.
+- Removed the ad-blocker notes from the page, README and NEXT.md: Joona already runs a blocker in Chrome.
+- Fix: the Shorts filter never fired. It sent a HEAD request to /shorts/<id>, which apparently never returned 200 to Node, so every Short was kept (12 of Korean Unnie's 15 feed entries). The feed itself links Shorts as /shorts/, so that link is now the check.
