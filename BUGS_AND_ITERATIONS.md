@@ -25,3 +25,7 @@
 - Japanese, Mandarin and Korean chips from 8 learning channels via RSS (27 / 26 / 21 videos). Channel IDs come from each page's canonical link and were checked against the feed's channel name.
 - Removed the ad-blocker notes from the page, README and NEXT.md: Joona already runs a blocker in Chrome.
 - Fix: the Shorts filter never fired. It sent a HEAD request to /shorts/<id>, which apparently never returned 200 to Node, so every Short was kept (12 of Korean Unnie's 15 feed entries). The feed itself links Shorts as /shorts/, so that link is now the check.
+
+## 0.5.0 (2026-11-04): learning-only, current videos
+- Joona saw an SNL sketch in his picks and wants only current, learning-shaped videos. HN videos must now be learning-shaped (lecture, course, explainer, or a trusted teaching channel) and first linked on HN in 2022 or later (`MIN_YEAR` in `scripts/build.mjs`; oEmbed has no upload date, so first-HN-year stands in). 2,949 → 473 videos. Followed and language channels are unchanged.
+- Root cause of the SNL pick: being learning-shaped only boosted a video's rank, it was never required, so any on-topic video (here "robots" in a comment-driven HN title) could show up.

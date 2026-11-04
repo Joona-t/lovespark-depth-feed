@@ -70,6 +70,9 @@ async function worker() {
 await Promise.all(Array.from({ length: 12 }, worker));
 writeFileSync(CACHE, JSON.stringify(cache));
 
+// Earliest year HN first linked a video; older videos are dropped.
+const MIN_YEAR = 2022;
+
 // Signal only: a video must land in one of these topics, matched on title + HN title + channel.
 const TOPICS = {
   LLMs: /\b(llms?|large language models?|language models?|gpt[- ]?[1-5o]?|chatgpt|transformers?|attention is all|tokeni[sz]|rlhf|fine[- ]?tun|in[- ]context learning|nanogpt|llama|claude|scaling laws?)\b/i,
@@ -126,10 +129,10 @@ const out = ranked
     return { x, title, ch, text, tags: topics(text, ch) };
   })
   .filter(({ ch, text, tags }) => tags.length && !isNews(ch) && !NOISE.test(text))
-  .map(({ x, title, ch, text, tags }) => {
-    const learn = LEARNING.test(text) || ch in TRUSTED;
-    return { x, title, ch, tags, learn, s: score(x) * (learn ? 1.6 : 1) };
-  })
+  .map(({ x, title, ch, text, tags }) => ({ x, title, ch, tags, learn: LEARNING.test(text) || ch in TRUSTED }))
+  // Learning + depth only, and current: oEmbed has no upload date, so the year HN first linked a video stands in for it.
+  .filter(({ x, learn }) => learn && Math.min(...x.years) >= MIN_YEAR)
+  .map(({ x, title, ch, tags, learn }) => ({ x, title, ch, tags, learn, s: score(x) }))
   .sort((a, b) => b.s - a.s)
   .map(({ x, title, ch, tags, learn, s }) => {
     const ys = [...x.years].sort();
