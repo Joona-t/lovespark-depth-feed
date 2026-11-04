@@ -29,3 +29,9 @@
 ## 0.5.0 (2026-11-04): learning-only, current videos
 - Joona saw an SNL sketch in his picks and wants only current, learning-shaped videos. HN videos must now be learning-shaped (lecture, course, explainer, or a trusted teaching channel) and first linked on HN in 2022 or later (`MIN_YEAR` in `scripts/build.mjs`; oEmbed has no upload date, so first-HN-year stands in). 2,949 → 473 videos. Followed and language channels are unchanged.
 - Root cause of the SNL pick: being learning-shaped only boosted a video's rank, it was never required, so any on-topic video (here "robots" in a comment-driven HN title) could show up.
+
+## 0.6.0 (2026-11-04): university courses, Computer Science, History
+- Full official course playlists, listed with yt-dlp at build time (YouTube changed its playlist page markup, so parsing it directly found 0 videos): Harvard CS50x 2024 and CS50 AI, MIT 6.S191 Deep Learning, 18.06 Linear Algebra, 18.065 Matrix Methods for ML, 6.041 Probability, 6.006 Algorithms, 6.034 AI, 8.04 Quantum Physics, 18.S191 Computational Thinking (10 courses, 349 lectures). Courses skip MIN_YEAR since they're hand-picked. Each playlist ID was checked to be the official uploader's; YouTube search mostly returned third-party re-uploads.
+- CS50 channel added to Following. New Computer Science topic (172) and History topic (61) with Fall of Civilizations, Historia Civilis, toldinstone and Extra History by RSS.
+- History videos are about wars and empires, so for History-only videos the war/military words no longer count as noise. Sampling showed bare "civilizations" matched space videos, so it was dropped.
+- 910 videos total.

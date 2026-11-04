@@ -1,6 +1,7 @@
 // Turn raw HN hits into a ranked video list, check each video still exists (YouTube oEmbed, no key),
 // and bake the result into site/index.html.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 
 const ID_RE = /(?:youtube\.com\/(?:watch\?(?:[^"\s<>]*?&(?:amp;)?)?v=|embed\/|live\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/g;
 
@@ -81,6 +82,8 @@ const TOPICS = {
   Physics: /\b(physics|physicists?|quantum (mechanics|field|physics|computing|computers?|entanglement)|relativity|general relativity|black holes?|thermodynamics|entropy|electromagnet\w*|particle physics|higgs|standard model|string theory|cosmology|dark (matter|energy)|neutrinos?|feynman|maxwell'?s equations|schr[öo]dinger|lagrangian|hamiltonian|special relativity|lhc|cern|fusion (reactor|energy|power)|tokamak|superconduct\w*|astrophysics|gravitational waves?|optics)\b/i,
   Chemistry: /\b(chemistry|chemists?|chemical reactions?|periodic table|molecules?|molecular|organic chemistry|biochemistry|catalys[ti]s?|polymers?|electrochemi\w*|crystallograph\w*|synthesi[sz]ing|elements? \d+|isotopes?|oxidation|electrolysis|batter(y|ies) chemistry|nilered|periodic videos)\b/i,
   Biology: /\b(biology|biologists?|cells? biology|cellular|dna|rna|genes?|genetics?|genomes?|genomics|crispr|proteins?|protein folding|evolution(ary)? (biology|theory)|natural selection|neurons?|neuroscience|brain (science|research|cells?|structure|scan\w*|imaging)|microb(e|es|iology|iome)|bacteria|viruses?|immune system|immunology|enzymes?|mitochondria|ecology|embryo\w*|stem cells?|biochemistry|synthetic biology|alphafold)\b/i,
+  History: /\b(history of|historians?|ancient (rome|romans?|greece|greeks?|egypt\w*|china|persia)|roman (empire|republic)|medieval|middle ages|renaissance|industrial revolution|byzantine|ottoman|dynast(y|ies)|bronze age|iron age|archaeolog\w*|(1[0-9]th|20th) century|empires?|enlightenment)\b/i,
+  "Computer Science": /\b(computer science|algorithms?|data structures?|compilers?|operating systems?|programming languages?|type systems?|distributed systems?|databases?|cryptograph\w*|complexity theory|turing machines?|recursion|dynamic programming|graph algorithms?|sorting|hash (tables?|maps?)|garbage collect\w*|concurrency|cs50|sicp|structure and interpretation)\b/i,
   Robotics: /\b(robots?|robotics?|boston dynamics|humanoids?|quadrupeds?|robot(ic)? (arms?|hands?)|self[- ]driving|autonomous (cars?|vehicles?|driving)|slam|kinematics|control theory|actuators?|legged)\b/i,
 };
 // Channels known for teaching these topics; their videos count even when the title says little.
@@ -94,14 +97,35 @@ const TRUSTED = {
   "Periodic Videos": ["Chemistry"], "NileRed": ["Chemistry"], "Explosions&Fire": ["Chemistry"], "Applied Science": ["Physics"],
   "Tom's Lab": ["Chemistry"], "Journey to the Microcosmos": ["Biology"], "iBiology": ["Biology"], "HHMI BioInteractive": ["Biology"],
   "Artem Kirsanov": ["Biology"], "Crash Course": [], "Kurzgesagt – In a Nutshell": [], "Ninja Nerd": ["Biology"],
-  "Julia Turc": ["AI", "LLMs"],
+  "Fall of Civilizations": ["History"], "Historia Civilis": ["History"], "toldinstone": ["History"], "Extra History": ["History"],
+  "Julia Turc": ["AI", "LLMs"], "CS50": ["Computer Science"], "MIT OpenCourseWare": [], "Alexander Amini": ["AI"],
 };
+// Full university courses (official playlists), listed with yt-dlp at build time. They're hand-picked, so they skip
+// MIN_YEAR: a 2005 linear algebra course is still current.
+const COURSES = [
+  { id: "PLhQjrBD2T381WAHyx1pq-sBfykqMBI7V4", name: "CS50", course: "Harvard CS50x", tags: ["Computer Science"] },
+  { id: "PLhQjrBD2T381PopUTYtMSstgk-hsTGkVm", name: "CS50", course: "Harvard CS50 AI", tags: ["AI", "Computer Science"] },
+  { id: "PLtBw6njQRU-rwp5__7C0oIVt26ZgjG9NI", name: "Alexander Amini", course: "MIT 6.S191 Deep Learning", tags: ["AI"] },
+  { id: "PLUl4u3cNGP63oMNUHXqIUcrkS2PivhN3k", name: "MIT OpenCourseWare", course: "MIT 18.065 Matrix Methods for ML", tags: ["Math", "AI"] },
+  { id: "PLE7DDD91010BC51F8", name: "MIT OpenCourseWare", course: "MIT 18.06 Linear Algebra", tags: ["Math"] },
+  { id: "PLUl4u3cNGP61MdtwGTqZA0MreSaDybji8", name: "MIT OpenCourseWare", course: "MIT 6.041 Probability", tags: ["Math"] },
+  { id: "PLUl4u3cNGP63EdVPNLG3ToM6LaEUuStEY", name: "MIT OpenCourseWare", course: "MIT 6.006 Algorithms", tags: ["Computer Science"] },
+  { id: "PLUl4u3cNGP63gFHB6xb-kVBiQHYe_4hSi", name: "MIT OpenCourseWare", course: "MIT 6.034 Artificial Intelligence", tags: ["AI", "Computer Science"] },
+  { id: "PLUl4u3cNGP61-9PEhRognw5vryrSEVLPr", name: "MIT OpenCourseWare", course: "MIT 8.04 Quantum Physics", tags: ["Physics"] },
+  { id: "PLP8iPy9hna6Q2Kr16aWPOKE0dz9OnsnIJ", name: "The Julia Programming Language", course: "MIT 18.S191 Computational Thinking", tags: ["Math", "Computer Science"] },
+];
 // Channels Joona follows by name. Not ranked by HN: their latest uploads come from YouTube's public RSS feed
 // (no key), they skip the drama filter (his explicit pick) and show under the Following chip.
 const FOLLOW = [
   { id: "UCCpNQKYvrnWQNjZprabMJlw", name: "Moonshots with Peter Diamandis", tags: ["AI"] },
   { id: "UCMUy_WsUIYbM_hKR9drb9dA", name: "Julia Turc", tags: ["AI", "LLMs"] },
   { id: "UCbRP3c757lWg9M-U7TyEkXA", name: "Theo - t3.gg", tags: ["AI"] },
+  { id: "UCcabW7890RKJzL968QWEykA", name: "CS50", tags: ["Computer Science"] },
+  // History: latest uploads, under the History chip only (label shown on the card).
+  { id: "UCT6Y5JJPKe_JDMivpKgVXew", name: "Fall of Civilizations", tags: ["History"], lang: true, label: "History channel" },
+  { id: "UCv_vLHiWVBh_FR9vbeuiY-A", name: "Historia Civilis", tags: ["History"], lang: true, label: "History channel" },
+  { id: "UCqBiWcuTF8IaLH7wBqnihsQ", name: "toldinstone", tags: ["History"], lang: true, label: "History channel" },
+  { id: "UCCODtTcd5M1JavPCOr_Uydg", name: "Extra History", tags: ["History"], lang: true, label: "History channel" },
   // Language learning: latest uploads, tagged by language only (not under Following).
   { id: "UCBSyd8tXJoEJKIXfrwkPdbA", name: "Japanese Ammo with Misa", tags: ["Japanese"], lang: true },
   { id: "UCH88l3_ltyJm67gAFzDFNRw", name: "Nihongo con Teppei", tags: ["Japanese"], lang: true },
@@ -117,6 +141,7 @@ const NEWS_CHANNEL = /\b(cnn|fox (news|business)|msnbc|cnbc|bbc news|sky news|ab
 // "LastWeekTonight" -> "Last Week Tonight", so camel-cased channel names match too.
 const isNews = (ch) => NEWS_CHANNEL.test(ch) || NEWS_CHANNEL.test(ch.replace(/([a-z])([A-Z])/g, "$1 $2"));
 const NOISE = /\b(drama|exposed|scandal|shocking|insane|won'?t believe|breaking|reacts?|reaction|destroy\w*|worst|killer\w*|slop|slams?|meltdown|is dead|is over|doomed|panic|crisis|outrage|fired|lawsuit|sues|elon|musk|trump|biden|election|senate|congress|hearing|testif\w*|stock|crypto|bitcoin|earnings|hype|ceo|funding|billion|layoffs?|apocalypse|terrifying|scary|will kill|your job|replace (you|us|programmers)|end of humanity|godfather of ai warns|bubble|war|military|weapons?|ukraine|russia\w*|petition|sanders|robot chicken|dangerous|the lie|the truth about|arrested)\b/i;
+const WAR = /\b(war|military|weapons?|ukraine|russia\w*)\b/gi;
 // Learning-shaped videos (lectures, courses, explainers, builds) rank higher.
 const LEARNING = /\b(lectures?|course|tutorial|explained|explain\w*|from scratch|introduction|intro to|lessons?|class|seminar|workshop|walkthrough|deep dive|let'?s build|derivation|visuali[sz]\w*|intuition|how .+ works|paper|cs ?\d{3}|mit|stanford|berkeley|cmu|caltech|oxford|cambridge|ocw)\b/i;
 const topics = (t, ch) => [...new Set([...Object.entries(TOPICS).filter(([, re]) => re.test(t)).map(([k]) => k), ...(TRUSTED[ch] || [])])];
@@ -128,7 +153,9 @@ const out = ranked
     const text = `${title} ${x.hnTitle || ""} ${ch}`;
     return { x, title, ch, text, tags: topics(text, ch) };
   })
-  .filter(({ ch, text, tags }) => tags.length && !isNews(ch) && !NOISE.test(text))
+  // History is about wars and empires, so for History-only videos the war/military words don't count as noise.
+  .filter(({ ch, text, tags }) => tags.length && !isNews(ch) &&
+    !(tags.every((t) => t === "History") ? NOISE.test(text.replace(WAR, "")) : NOISE.test(text)))
   .map(({ x, title, ch, text, tags }) => ({ x, title, ch, tags, learn: LEARNING.test(text) || ch in TRUSTED }))
   // Learning + depth only, and current: oEmbed has no upload date, so the year HN first linked a video stands in for it.
   .filter(({ x, learn }) => learn && Math.min(...x.years) >= MIN_YEAR)
@@ -171,11 +198,29 @@ for (const f of FOLLOW) {
     if (!id || entry.includes("/shorts/")) continue;
     if (have.has(id)) { if (!f.lang) out.find((x) => x.id === id).follow = true; continue; }
     const tags = f.lang ? f.tags : [...new Set([...topics(title, ""), ...f.tags])];
-    out.push({ id, title, ch: f.name, yrs: [y, y], pub, tags, follow: f.lang ? undefined : true, lang: f.lang || undefined,
+    out.push({ id, title, ch: f.name, yrs: [y, y], pub, tags, follow: f.lang ? undefined : true, lang: f.lang || undefined, lab: f.label,
       learn: f.lang || LEARNING.test(title) || undefined, s: median });
     have.add(id); n++;
   }
   console.log(`follow ${f.name}: ${n} videos`);
+}
+
+for (const c of COURSES) {
+  let lines = [];
+  try {
+    lines = execFileSync("yt-dlp", ["--flat-playlist", "--print", "%(id)s\t%(title)s", `https://www.youtube.com/playlist?list=${c.id}`],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 120000 }).trim().split("\n");
+  } catch (e) { console.log(`course ${c.course}: yt-dlp failed or missing (${e.code || e.message}), skipped`); continue; }
+  let n = 0;
+  lines.forEach((line, i) => {
+    const [id, title] = line.split("\t");
+    if (!/^[\w-]{11}$/.test(id) || /^\[(private|deleted)/i.test(title)) return;
+    const prev = out.find((x) => x.id === id);
+    if (prev) { prev.course = c.course; return; }
+    out.push({ id, title, ch: c.name, course: c.course, part: i + 1, tags: c.tags, learn: true, s: median });
+    have.add(id); n++;
+  });
+  console.log(`course ${c.course}: ${n} videos`);
 }
 
 const html = readFileSync("site/template.html", "utf8").replace("/*__DATA__*/[]", JSON.stringify(out).replace(/</g, "\\u003c"));
