@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "depth-feed", "runtimeExecutable": "node", "runtimeArgs": ["scripts/serve.mjs"], "port": 8737 }
+  ]
+}

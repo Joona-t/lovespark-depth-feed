@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Depth Feed</title>
+<style>
+:root {
+  --bg: #f7f5f1; --panel: #ffffff; --ink: #1d1b18; --muted: #6d675e; --line: #e4dfd6;
+  --accent: #b4532a; --accent-ink: #fff; --chip: #efeae2;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #151412; --panel: #1f1d1a; --ink: #ece7df; --muted: #9c958a; --line: #34302b; --accent: #e08a5f; --accent-ink: #151412; --chip: #2a2723; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { max-width: 1100px; margin: 0 auto; padding: 28px 16px 8px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: baseline; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+h1 small { font-weight: 400; color: var(--muted); font-size: 14px; margin-left: 8px; }
+nav { display: flex; gap: 4px; margin-left: auto; }
+nav button, .chip, .btn { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+nav button[aria-pressed="true"], .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+main { max-width: 1100px; margin: 0 auto; padding: 8px 16px 48px; }
+.bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 20px; align-items: center; }
+.chip { background: var(--chip); border-color: transparent; font-size: 14px; }
+.note { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+input[type=search] { font: inherit; width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.thumb { aspect-ratio: 16/9; background: var(--chip) center/cover; cursor: pointer; border: 0; padding: 0; width: 100%; display: block; }
+.body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.title { font-weight: 600; line-height: 1.3; cursor: pointer; }
+.meta { color: var(--muted); font-size: 13px; }
+.quote { font-size: 14px; color: var(--muted); border-left: 2px solid var(--line); padding-left: 10px; margin: 4px 0 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.actions { display: flex; gap: 6px; margin-top: auto; padding-top: 8px; }
+.btn { font-size: 13px; padding: 3px 10px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.more { display: block; margin: 28px auto 0; }
+#player { position: fixed; inset: 0; background: var(--bg); display: none; flex-direction: column; z-index: 10; overflow: auto; }
+#player.open { display: flex; }
+#player .wrap { max-width: 1100px; width: 100%; margin: 0 auto; padding: 16px; }
+#player .frame { aspect-ratio: 16/9; width: 100%; background: #000; border-radius: 12px; overflow: hidden; }
+#player iframe { width: 100%; height: 100%; border: 0; }
+#player .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+#player h2 { font-size: 18px; margin: 0; }
+#player .quote { -webkit-line-clamp: unset; margin-top: 16px; }
+a { color: var(--accent); }
+.empty { color: var(--muted); padding: 40px 0; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Depth Feed <small>videos Hacker News keeps recommending</small></h1>
+  <nav id="tabs">
+    <button data-tab="picks" aria-pressed="true">Today</button>
+    <button data-tab="search">Search</button>
+    <button data-tab="saved">Saved</button>
+    <button data-tab="watched">Watched</button>
+  </nav>
+</header>
+<main>
+  <div class="bar" id="topics"></div>
+  <div id="view"></div>
+</main>
+
+<div id="player" role="dialog" aria-modal="true" aria-label="Video player">
+  <div class="wrap">
+    <div class="top">
+      <h2 id="p-title"></h2>
+      <div class="actions" style="margin:0;padding:0">
+        <button class="btn primary" id="p-done">Done, mark watched</button>
+        <button class="btn" id="p-close">Close</button>
+      </div>
+    </div>
+    <div class="frame"><iframe id="p-frame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+    <div id="p-info"></div>
+  </div>
+</div>
+
+<script>
+const VIDEOS = /*__DATA__*/[];
+const PICKS_PER_DAY = 6;
+const byId = new Map(VIDEOS.map((v) => [v.id, v]));
+
+// Per-viewer state, browser-only. Everything still works if storage is blocked.
+const KEY = "depthfeed.v1";
+let state = { saved: [], watched: [], hidden: [], tagAffinity: {}, topic: null, reshuffles: 0, day: "" };
+try { Object.assign(state, JSON.parse(localStorage.getItem(KEY)) || {}); } catch {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
+
+const today = new Date().toISOString().slice(0, 10);
+if (state.day !== today) { state.day = today; state.reshuffles = 0; save(); }
+
+// Seeded RNG so "Today" is the same set all day unless you deliberately ask for more.
+function rng(seed) {
+  let h = 2166136261;
+  for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507), h = Math.imul(h ^ (h >>> 13), 3266489909), (h ^= h >>> 16) >>> 0) / 4294967296);
+}
+
+function affinity(v) {
+  return v.tags.reduce((a, t) => a + (state.tagAffinity[t] || 0), 0);
+}
+function nudge(v, d) {
+  for (const t of v.tags) state.tagAffinity[t] = Math.max(-5, Math.min(5, (state.tagAffinity[t] || 0) + d));
+}
+
+function picks() {
+  const excluded = new Set([...state.watched, ...state.hidden, ...state.saved]);
+  const pool = VIDEOS.filter((v) => !excluded.has(v.id) && (!state.topic || v.tags.includes(state.topic)));
+  const rand = rng(`${today}:${state.reshuffles}:${state.topic}`);
+  // Weighted sampling without replacement (Efraimidis-Spirakis): key = u^(1/w).
+  return pool
+    .map((v) => ({ v, k: Math.pow(rand(), 1 / (v.s * Math.exp(0.35 * affinity(v)))) }))
+    .sort((a, b) => b.k - a.k)
+    .slice(0, PICKS_PER_DAY)
+    .map((x) => x.v);
+}
+
+const esc = (s = "") => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const span = (v) => (v.yrs[0] === v.yrs[1] ? `${v.yrs[0]}` : `${v.yrs[0]}–${v.yrs[1]}`);
+const why = (v) => [v.rec ? `${v.rec} HN ${v.rec === 1 ? "person" : "people"} linked it` : "", v.pts ? `${v.pts} points` : "", span(v)].filter(Boolean).join(" · ");
+
+function card(v) {
+  const isSaved = state.saved.includes(v.id);
+  return `<article class="card" data-id="${v.id}">
+    <button class="thumb" data-act="watch" aria-label="Watch ${esc(v.title)}" style="background-image:url(https://i.ytimg.com/vi/${v.id}/hq2.jpg)"></button>
+    <div class="body">
+      <div class="title" data-act="watch">${esc(v.title)}</div>
+      <div class="meta">${esc(v.ch)} · ${why(v)}</div>
+      ${v.q ? `<p class="quote">${esc(v.q.t)}</p>` : ""}
+      <div class="actions">
+        <button class="btn primary" data-act="watch">Watch</button>
+        <button class="btn" data-act="save">${isSaved ? "Unsave" : "Save for later"}</button>
+        <button class="btn" data-act="hide">Not for me</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+const grid = (list, empty) => (list.length ? `<div class="grid">${list.map(card).join("")}</div>` : `<p class="empty">${empty}</p>`);
+let tab = "picks";
+let query = "";
+
+function render() {
+  document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.tab === tab));
+  const counts = {};
+  VIDEOS.forEach((v) => v.tags.forEach((t) => (counts[t] = (counts[t] || 0) + 1)));
+  document.getElementById("topics").innerHTML =
+    `<button class="chip" data-topic="" aria-pressed="${!state.topic}">Everything</button>` +
+    Object.keys(counts).sort((a, b) => counts[b] - counts[a])
+      .map((t) => `<button class="chip" data-topic="${esc(t)}" aria-pressed="${state.topic === t}">${esc(t)}</button>`).join("");
+
+  const view = document.getElementById("view");
+  const topicOk = (v) => !state.topic || v.tags.includes(state.topic);
+  if (tab === "picks") {
+    view.innerHTML = `<p class="note">${PICKS_PER_DAY} picks for ${today}. They stay the same all day, so there is nothing to refresh.</p>` +
+      grid(picks(), "Nothing left in this topic. Try another.") +
+      `<button class="btn more" id="reshuffle">I've seen these, show ${PICKS_PER_DAY} different ones</button>`;
+  } else if (tab === "search") {
+    const q = query.toLowerCase();
+    const hits = q.length < 2 ? [] : VIDEOS.filter((v) => topicOk(v) && `${v.title} ${v.ch} ${v.hn || ""}`.toLowerCase().includes(q)).slice(0, 30);
+    view.innerHTML = `<input type="search" id="q" placeholder="Search ${VIDEOS.length.toLocaleString()} videos by title or channel" value="${esc(query)}" autofocus>` +
+      grid(hits, q.length < 2 ? "Type at least two letters." : "No matches.");
+    const input = document.getElementById("q");
+    input.focus(); input.setSelectionRange(query.length, query.length);
+    input.oninput = (e) => { query = e.target.value; render(); };
+  } else {
+    const ids = tab === "saved" ? state.saved : state.watched;
+    view.innerHTML = grid([...ids].reverse().map((id) => byId.get(id)).filter(Boolean).filter(topicOk),
+      tab === "saved" ? "Nothing saved yet." : "Nothing watched yet.");
+  }
+}
+
+const toggle = (list, id) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+let playing = null;
+
+function openPlayer(v) {
+  playing = v;
+  document.getElementById("p-title").textContent = v.title;
+  // nocookie domain, no related videos from other channels, no annotations.
+  document.getElementById("p-frame").src = `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&iv_load_policy=3&playsinline=1`;
+  document.getElementById("p-info").innerHTML =
+    `<p class="meta" style="margin-top:12px">${esc(v.ch)} · ${why(v)}` +
+    (v.story ? ` · <a href="https://news.ycombinator.com/item?id=${v.story}" target="_blank" rel="noopener">HN discussion</a>` : "") + `</p>` +
+    (v.q ? `<p class="quote">${esc(v.q.t)} <a href="https://news.ycombinator.com/item?id=${v.q.id}" target="_blank" rel="noopener">— ${esc(v.q.by)}</a></p>` : "");
+  document.getElementById("player").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closePlayer(markWatched) {
+  if (playing && markWatched && !state.watched.includes(playing.id)) {
+    state.watched.push(playing.id);
+    state.saved = state.saved.filter((x) => x !== playing.id);
+    nudge(playing, 1);
+    save();
+  }
+  playing = null;
+  document.getElementById("p-frame").src = "about:blank";
+  document.getElementById("player").classList.remove("open");
+  document.body.style.overflow = "";
+  render();
+}
+
+document.getElementById("p-done").onclick = () => closePlayer(true);
+document.getElementById("p-close").onclick = () => closePlayer(false);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && playing) closePlayer(false); });
+
+document.addEventListener("click", (e) => {
+  const tabBtn = e.target.closest("#tabs button");
+  if (tabBtn) { tab = tabBtn.dataset.tab; render(); return; }
+  const chip = e.target.closest("[data-topic]");
+  if (chip) { state.topic = chip.dataset.topic || null; save(); render(); return; }
+  if (e.target.id === "reshuffle") { state.reshuffles++; save(); render(); window.scrollTo(0, 0); return; }
+  const act = e.target.closest("[data-act]");
+  if (!act) return;
+  const v = byId.get(act.closest(".card").dataset.id);
+  if (act.dataset.act === "watch") openPlayer(v);
+  if (act.dataset.act === "save") { state.saved = toggle(state.saved, v.id); if (state.saved.includes(v.id)) nudge(v, 1); save(); render(); }
+  if (act.dataset.act === "hide") { state.hidden.push(v.id); nudge(v, -1); save(); render(); }
+});
+
+render();
+</script>
+</body>
+</html>
