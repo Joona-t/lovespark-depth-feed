@@ -51,7 +51,7 @@ a { color: var(--accent); }
 </head>
 <body>
 <header>
-  <h1>Depth Feed <small>videos Hacker News keeps recommending</small></h1>
+  <h1>Depth Feed <small>AI, LLMs, math and robotics that Hacker News keeps recommending</small></h1>
   <nav id="tabs">
     <button data-tab="picks" aria-pressed="true">Today</button>
     <button data-tab="search">Search</button>
@@ -75,6 +75,7 @@ a { color: var(--accent); }
     </div>
     <div class="frame"><iframe id="p-frame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
     <div id="p-info"></div>
+    <p class="meta">Ads, if any, come from YouTube's player and this page can't remove them. uBlock Origin in your browser blocks them.</p>
   </div>
 </div>
 
@@ -128,7 +129,7 @@ function card(v) {
     <button class="thumb" data-act="watch" aria-label="Watch ${esc(v.title)}" style="background-image:url(https://i.ytimg.com/vi/${v.id}/hq2.jpg)"></button>
     <div class="body">
       <div class="title" data-act="watch">${esc(v.title)}</div>
-      <div class="meta">${esc(v.ch)} · ${why(v)}</div>
+      <div class="meta">${v.learn ? "<b>Learning</b> · " : ""}${esc(v.ch)} · ${why(v)}</div>
       ${v.q ? `<p class="quote">${esc(v.q.t)}</p>` : ""}
       <div class="actions">
         <button class="btn primary" data-act="watch">Watch</button>
@@ -148,9 +149,9 @@ function render() {
   const counts = {};
   VIDEOS.forEach((v) => v.tags.forEach((t) => (counts[t] = (counts[t] || 0) + 1)));
   document.getElementById("topics").innerHTML =
-    `<button class="chip" data-topic="" aria-pressed="${!state.topic}">Everything</button>` +
-    Object.keys(counts).sort((a, b) => counts[b] - counts[a])
-      .map((t) => `<button class="chip" data-topic="${esc(t)}" aria-pressed="${state.topic === t}">${esc(t)}</button>`).join("");
+    `<button class="chip" data-topic="" aria-pressed="${!state.topic}">All four</button>` +
+    ["LLMs", "AI", "Math", "Robotics"].filter((t) => counts[t])
+      .map((t) => `<button class="chip" data-topic="${t}" aria-pressed="${state.topic === t}">${t} <span class="meta">${counts[t]}</span></button>`).join("");
 
   const view = document.getElementById("view");
   const topicOk = (v) => !state.topic || v.tags.includes(state.topic);

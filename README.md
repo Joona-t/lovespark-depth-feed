@@ -6,6 +6,8 @@ A personal YouTube feed made from the videos Hacker News keeps recommending, bui
 - **Mid-video thumbnails.** Each thumbnail is YouTube's auto-generated middle frame (`hq2.jpg`), not the creator's A/B-tested one.
 - **No YouTube sidebar.** Videos play in-page through `youtube-nocookie.com` with `rel=0`, so there's no autoplay chain or recommendation rail.
 - **"Why" before "what".** Each card shows how many HN people linked the video, over how many years, and a real HN comment about it.
+- **Signal only.** Four topics: AI, LLMs, Math, Robotics. News and mainstream-media channels (CNN, BBC News, Bloomberg, late-night shows and so on) and drama/hype titles ("destroying", "shocking", "bubble", politics, stocks) are dropped at build time. Lectures, courses, explainers and teaching channels (3Blue1Brown, Karpathy, Welch Labs and others) rank 1.6× higher and get a **Learning** badge. All of these lists are in `scripts/build.mjs`: edit them, then rebuild.
+- **Ads:** the page can't strip ads out of YouTube's embedded player. A free blocker like [uBlock Origin](https://github.com/gorhill/uBlock) in your browser does that.
 - **Learns locally.** Watching or saving a video nudges its topics up, and "Not for me" nudges them down. Everything lives in your browser's localStorage: no accounts, no data leaves your machine.
 
 ## Run

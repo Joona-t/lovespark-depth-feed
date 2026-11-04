@@ -2,7 +2,6 @@
 // and bake the result into site/index.html.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 
-const MAX_VIDEOS = 8000;
 const ID_RE = /(?:youtube\.com\/(?:watch\?(?:[^"\s<>]*?&(?:amp;)?)?v=|embed\/|live\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/g;
 
 const decode = (s = "") =>
@@ -47,9 +46,8 @@ for (const c of lines("data/comments.jsonl")) {
 // "Keeps being recommended": distinct people, across distinct years, plus front-page interest.
 const score = (x) => x.recommenders.size + 2 * (x.years.size - 1) + 2 * Math.log1p(x.points);
 const ranked = [...videos.values()]
-  .filter((x) => x.recommenders.size >= 3 || x.points >= 40)
-  .sort((a, b) => score(b) - score(a))
-  .slice(0, Math.round(MAX_VIDEOS * 1.25));
+  .filter((x) => x.recommenders.size >= 2 || x.points >= 10)
+  .sort((a, b) => score(b) - score(a));
 console.log(`${videos.size} distinct videos linked, ${ranked.length} candidates`);
 
 // oEmbed cache so reruns only fetch new ids.
@@ -72,45 +70,60 @@ async function worker() {
 await Promise.all(Array.from({ length: 12 }, worker));
 writeFileSync(CACHE, JSON.stringify(cache));
 
+// Signal only: a video must land in one of these topics, matched on title + HN title + channel.
 const TOPICS = {
-  "AI & ML": /\b(ai|a\.i\.|machine learning|neural|deep learning|gpt|llm|transformer|karpathy|reinforcement|diffusion)\b/i,
-  Programming: /\b(programming|code|coding|compiler|rust|python|haskell|lisp|javascript|c\+\+|golang|software|unix|linux|git|database|sql|vim|emacs|algorithm|functional|type system|debugg)/i,
-  Math: /\b(math|mathematics|theorem|proof|calculus|algebra|geometry|topology|numberphile|3blue1brown|prime|equation|fourier)/i,
-  Physics: /\b(physics|quantum|relativity|particle|cosmolog|black hole|thermodynamic|fusion|feynman)/i,
-  Space: /\b(space|nasa|spacex|rocket|mars|moon|orbit|apollo|satellite|telescope|starship|asteroid)/i,
-  Hardware: /\b(cpu|chip|semiconductor|transistor|fpga|electronics|circuit|hardware|arduino|6502|z80|risc|processor|silicon|soldering|oscilloscope)/i,
-  Engineering: /\b(engineering|engine|machining|manufactur|factory|bridge|mechanical|lathe|cnc|3d print|aircraft|airplane|jet)/i,
-  History: /\b(history|historical|19\d\ds|ancient|war|documentary|vintage|retro|archive)/i,
-  Security: /\b(security|hack|hacking|exploit|defcon|def con|ccc|crypto(graphy)?|vulnerab|reverse engineer)/i,
-  Biology: /\b(biology|cell|dna|gene|evolution|brain|neuro|protein|virus|medicine|medical)/i,
-  Talks: /\b(talk|lecture|keynote|conference|strange loop|gdc|interview|podcast|course|class)/i,
-  Music: /\b(music|song|album|synth|concert|guitar|piano|composer|band)\b/i,
-  Games: /\b(game|gaming|speedrun|nintendo|doom|minecraft|demoscene)/i,
+  LLMs: /\b(llms?|large language models?|language models?|gpt[- ]?[1-5o]?|chatgpt|transformers?|attention is all|tokeni[sz]|rlhf|fine[- ]?tun|in[- ]context learning|nanogpt|llama|claude|scaling laws?)\b/i,
+  AI: /\b(ai|a\.i\.|artificial intelligence|machine learning|deep learning|neural (net|network)s?|backprop\w*|gradient descent|reinforcement learning|diffusion models?|computer vision|convolutional|alpha(go|zero|fold)|deepmind|karpathy|hinton|lecun|bengio|sutskever|pytorch|tensorflow|jax|micrograd|autoencoders?|gans?|bayesian|statistical learning|kaggle)\b/i,
+  Math: /\b(math(s|ematics|ematical|ematician)?|theorems?|calculus|algebra|geometry|topology|number theory|prime numbers?|riemann|fourier|probability|combinatorics|category theory|differential equations?|eigen\w*|linear algebra|integrals?|infinity|g[öo]del|manifolds?|group theory|graph theory|lambda calculus|3blue1brown|numberphile|mathologer|terence tao|grothendieck|euler)\b/i,
+  Robotics: /\b(robots?|robotics?|boston dynamics|humanoids?|quadrupeds?|robot(ic)? (arms?|hands?)|self[- ]driving|autonomous (cars?|vehicles?|driving)|slam|kinematics|control theory|actuators?|legged)\b/i,
 };
-const topics = (t) => Object.entries(TOPICS).filter(([, re]) => re.test(t)).map(([k]) => k);
+// Channels known for teaching these topics; their videos count even when the title says little.
+const TRUSTED = {
+  "3Blue1Brown": ["Math"], "Andrej Karpathy": ["AI", "LLMs"], "Numberphile": ["Math"], "Mathologer": ["Math"],
+  "Welch Labs": ["AI", "Math"], "StatQuest with Josh Starmer": ["AI"], "Yannic Kilcher": ["AI", "LLMs"],
+  "Steve Brunton": ["Math"], "Institute for Advanced Study": ["Math"], "Boston Dynamics": ["Robotics"],
+  "Jeremy Howard": ["AI"], "Umar Jamil": ["LLMs"], "Google DeepMind": ["AI"], "Stanford Online": ["AI"],
+};
+// No news, drama or hype: mainstream/news channels and attention-bait titles are dropped outright.
+const NEWS_CHANNEL = /\b(cnn|fox (news|business)|msnbc|cnbc|bbc news|sky news|abc news|nbc news|cbs (news|mornings)|60 minutes|al jazeera|bloomberg|reuters|associated press|guardian news|new york times|wall street journal|wsj|washington post|vice( news)?|vox|business insider|insider|cnet|the verge|tmz|young turks|daily show|last week tonight|jimmy kimmel|late show|tonight show|good morning america|pbs newshour|dw news|france 24|euronews|wion|forbes|fortune|yahoo finance|channel 4 news|lbc|piers morgan|the economist|tldr news|cold fusion|coldfusion|hbo|ign|prime video|not just bikes|y combinator|more perfect union|adult swim|dyson|steve lehto|excerpts4u)\b/i;
+// "LastWeekTonight" -> "Last Week Tonight", so camel-cased channel names match too.
+const isNews = (ch) => NEWS_CHANNEL.test(ch) || NEWS_CHANNEL.test(ch.replace(/([a-z])([A-Z])/g, "$1 $2"));
+const NOISE = /\b(drama|exposed|scandal|shocking|insane|won'?t believe|breaking|reacts?|reaction|destroy\w*|worst|killer\w*|slop|slams?|meltdown|is dead|is over|doomed|panic|crisis|outrage|fired|lawsuit|sues|elon|musk|trump|biden|election|senate|congress|hearing|testif\w*|stock|crypto|bitcoin|earnings|hype|ceo|funding|billion|layoffs?|apocalypse|terrifying|scary|will kill|your job|replace (you|us|programmers)|end of humanity|godfather of ai warns|bubble|war|military|weapons?|ukraine|russia\w*|petition|sanders|robot chicken|dangerous|the lie|the truth about|arrested)\b/i;
+// Learning-shaped videos (lectures, courses, explainers, builds) rank higher.
+const LEARNING = /\b(lectures?|course|tutorial|explained|explain\w*|from scratch|introduction|intro to|lessons?|class|seminar|workshop|walkthrough|deep dive|let'?s build|derivation|visuali[sz]\w*|intuition|how .+ works|paper|cs ?\d{3}|mit|stanford|berkeley|cmu|caltech|oxford|cambridge|ocw)\b/i;
+const topics = (t, ch) => [...new Set([...Object.entries(TOPICS).filter(([, re]) => re.test(t)).map(([k]) => k), ...(TRUSTED[ch] || [])])];
 
 const out = ranked
   .filter((x) => cache[x.id])
-  .slice(0, MAX_VIDEOS)
   .map((x) => {
-    const title = cache[x.id].title;
-    const text = `${title} ${x.hnTitle || ""} ${cache[x.id].author}`;
+    const { title, author: ch = "" } = cache[x.id];
+    const text = `${title} ${x.hnTitle || ""} ${ch}`;
+    return { x, title, ch, text, tags: topics(text, ch) };
+  })
+  .filter(({ ch, text, tags }) => tags.length && !isNews(ch) && !NOISE.test(text))
+  .map(({ x, title, ch, text, tags }) => {
+    const learn = LEARNING.test(text) || ch in TRUSTED;
+    return { x, title, ch, tags, learn, s: score(x) * (learn ? 1.6 : 1) };
+  })
+  .sort((a, b) => b.s - a.s)
+  .map(({ x, title, ch, tags, learn, s }) => {
     const ys = [...x.years].sort();
     return {
       id: x.id,
       title,
-      ch: cache[x.id].author,
+      ch,
       hn: x.hnTitle && x.hnTitle !== title ? x.hnTitle : undefined,
       rec: x.recommenders.size,
       pts: x.points,
       yrs: [ys[0], ys.at(-1)],
       story: x.stories[0],
       q: x.quote ? { t: x.quote.text, by: x.quote.by, id: x.quote.id } : undefined,
-      tags: topics(text),
-      s: Math.round(score(x) * 10) / 10,
+      tags,
+      learn: learn || undefined,
+      s: Math.round(s * 10) / 10,
     };
   });
 
 const html = readFileSync("site/template.html", "utf8").replace("/*__DATA__*/[]", JSON.stringify(out).replace(/</g, "\\u003c"));
 writeFileSync("site/index.html", html);
-console.log(`wrote site/index.html with ${out.length} videos (${ranked.length - out.length} dead or skipped)`);
+console.log(`wrote site/index.html with ${out.length} videos (of ${ranked.length} candidates; the rest dead, off-topic or noise)`);
